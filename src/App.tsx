@@ -137,6 +137,8 @@ export default function App() {
   });
   const [progress, setProgress] = useState(0);
   const [finalTime, setFinalTime] = useState('00:00.00');
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const t = TRANSLATIONS[language];
 
@@ -221,6 +223,38 @@ export default function App() {
       window.removeEventListener('keyup', handleKeyUp);
     };
   }, []);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      containerRef.current?.requestFullscreen().catch(err => {
+        console.error(`Error attempting to enable fullscreen: ${err.message}`);
+      });
+    } else {
+      document.exitFullscreen();
+    }
+  };
+
+  const handleTouchStart = (key: keyof typeof stateRef.current.keys) => {
+    stateRef.current.keys[key] = true;
+    if (key === 'space') {
+      stateRef.current.spaceWasPressed = false;
+    }
+  };
+
+  const handleTouchEnd = (key: keyof typeof stateRef.current.keys) => {
+    stateRef.current.keys[key] = false;
+    if (key === 'space') {
+      stateRef.current.spaceWasPressed = false;
+    }
+  };
 
   // --- Game Loop ---
   useEffect(() => {
@@ -877,10 +911,16 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-900 flex items-center justify-center font-mono text-white p-4">
-      <div className="relative">
-        {/* Language Toggle */}
-        <div className="absolute -top-12 right-0 flex gap-2">
+    <div ref={containerRef} className="min-h-screen bg-neutral-900 flex flex-col items-center justify-center font-mono text-white p-4 relative overflow-hidden">
+      <div className="relative w-full max-w-[800px] flex flex-col items-center">
+        {/* Top Bar: Language & Fullscreen */}
+        <div className="absolute -top-12 right-0 flex gap-2 z-50">
+          <button 
+            onClick={toggleFullscreen}
+            className="px-3 py-1 rounded text-xs font-bold transition-colors bg-neutral-800 text-neutral-400 hover:bg-neutral-700"
+          >
+            {isFullscreen ? 'EXIT FULLSCREEN' : 'FULLSCREEN'}
+          </button>
           <button 
             onClick={() => setLanguage('en')}
             className={`px-3 py-1 rounded text-xs font-bold transition-colors ${language === 'en' ? 'bg-cyan-500 text-black' : 'bg-neutral-800 text-neutral-400'}`}
@@ -899,9 +939,76 @@ export default function App() {
           ref={canvasRef}
           width={CANVAS_WIDTH}
           height={CANVAS_HEIGHT}
-          className="bg-black rounded-lg shadow-2xl border border-neutral-800"
-          style={{ width: '100%', maxWidth: `${CANVAS_WIDTH}px`, height: 'auto', aspectRatio: `${CANVAS_WIDTH}/${CANVAS_HEIGHT}` }}
+          className="bg-black rounded-lg shadow-2xl border border-neutral-800 w-full h-auto max-h-[80vh] object-contain"
+          style={{ aspectRatio: `${CANVAS_WIDTH}/${CANVAS_HEIGHT}` }}
         />
+        
+        {/* Mobile Controls (Visible only when playing) */}
+        {gameState === 'playing' && (
+          <div className="md:hidden absolute bottom-4 left-0 right-0 flex justify-between px-4 z-50 pointer-events-none">
+            {/* Left/Right Controls */}
+            <div className="flex gap-2 pointer-events-auto">
+              <button 
+                className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center active:bg-white/40 border border-white/30"
+                onTouchStart={() => handleTouchStart('a')}
+                onTouchEnd={() => handleTouchEnd('a')}
+                onMouseDown={() => handleTouchStart('a')}
+                onMouseUp={() => handleTouchEnd('a')}
+                onMouseLeave={() => handleTouchEnd('a')}
+              >
+                <span className="text-2xl">←</span>
+              </button>
+              <button 
+                className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center active:bg-white/40 border border-white/30"
+                onTouchStart={() => handleTouchStart('d')}
+                onTouchEnd={() => handleTouchEnd('d')}
+                onMouseDown={() => handleTouchStart('d')}
+                onMouseUp={() => handleTouchEnd('d')}
+                onMouseLeave={() => handleTouchEnd('d')}
+              >
+                <span className="text-2xl">→</span>
+              </button>
+            </div>
+
+            {/* Action Controls */}
+            <div className="flex gap-2 pointer-events-auto">
+              <div className="flex flex-col gap-2">
+                <button 
+                  className="w-16 h-16 bg-cyan-500/30 backdrop-blur-md rounded-full flex items-center justify-center active:bg-cyan-500/60 border border-cyan-500/50"
+                  onTouchStart={() => handleTouchStart('space')}
+                  onTouchEnd={() => handleTouchEnd('space')}
+                  onMouseDown={() => handleTouchStart('space')}
+                  onMouseUp={() => handleTouchEnd('space')}
+                  onMouseLeave={() => handleTouchEnd('space')}
+                >
+                  <span className="text-xl font-bold">ECHO</span>
+                </button>
+              </div>
+              <div className="flex flex-col gap-2">
+                <button 
+                  className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center active:bg-white/40 border border-white/30"
+                  onTouchStart={() => handleTouchStart('w')}
+                  onTouchEnd={() => handleTouchEnd('w')}
+                  onMouseDown={() => handleTouchStart('w')}
+                  onMouseUp={() => handleTouchEnd('w')}
+                  onMouseLeave={() => handleTouchEnd('w')}
+                >
+                  <span className="text-2xl">↑</span>
+                </button>
+                <button 
+                  className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center active:bg-white/40 border border-white/30"
+                  onTouchStart={() => handleTouchStart('s')}
+                  onTouchEnd={() => handleTouchEnd('s')}
+                  onMouseDown={() => handleTouchStart('s')}
+                  onMouseUp={() => handleTouchEnd('s')}
+                  onMouseLeave={() => handleTouchEnd('s')}
+                >
+                  <span className="text-2xl">↓</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         
         {gameState === 'menu' && (
           <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center rounded-lg backdrop-blur-sm p-8 text-center">
