@@ -66,6 +66,9 @@ const TRANSLATIONS = {
     eventRain: 'HEAVY RAIN',
     eventSwarm: 'DRONE SWARM!',
     eventElectric: 'ELECTRIC BURST',
+    objectiveLabel: 'OBJECTIVE',
+    objectiveText: 'Reach the cave at 30 km before your energy runs out.',
+    menuBtn: 'MENU',
   },
   es: {
     title: 'DARK ROUTE',
@@ -108,6 +111,9 @@ const TRANSLATIONS = {
     eventRain: 'LLUVIA FUERTE',
     eventSwarm: '¡ENJAMBRE DE DRONES!',
     eventElectric: 'RÁFAGA ELÉCTRICA',
+    objectiveLabel: 'OBJETIVO',
+    objectiveText: 'Llega a la cueva a 30 km de distancia antes de que se acabe la energía.',
+    menuBtn: 'MENÚ',
   }
 };
 
@@ -782,35 +788,88 @@ export default function App() {
       
       ctx.fillStyle = '#000000';
       ctx.fill();
-      ctx.strokeStyle = '#ffffff'; // White outline so it's visible on dark background
+      ctx.strokeStyle = '#00ffff'; // Cyan outline so it's visible on dark background
       ctx.lineWidth = 2;
       ctx.stroke();
       ctx.restore();
 
+      // Helper function for rounded rectangles inside draw
+      const drawRoundedRect = (c: CanvasRenderingContext2D, rx: number, ry: number, rw: number, rh: number, rr: number) => {
+        if (rw < 2 * rr) rr = rw / 2;
+        if (rh < 2 * rr) rr = rh / 2;
+        c.beginPath();
+        c.moveTo(rx + rr, ry);
+        c.arcTo(rx + rw, ry, rx + rw, ry + rh, rr);
+        c.arcTo(rx + rw, ry + rh, rx, ry + rh, rr);
+        c.arcTo(rx, ry + rh, rx, ry, rr);
+        c.arcTo(rx, ry, rx + rw, ry, rr);
+        c.closePath();
+      };
+
       // --- UI ---
       // Health Bar
-      ctx.fillStyle = '#333';
-      ctx.fillRect(20, 20, 200, 15);
-      const healthRatio = Math.max(0, state.health / MAX_HEALTH);
-      ctx.fillStyle = '#ff0000';
-      ctx.fillRect(20, 20, 200 * healthRatio, 15);
-      ctx.strokeStyle = '#fff';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(20, 20, 200, 15);
-      ctx.fillStyle = '#fff';
-      ctx.font = 'bold 10px monospace';
-      ctx.fillText(t.health || 'HEALTH', 25, 31);
+      const hX = 20;
+      const hY = 20;
+      const hW = 200;
+      const hH = 16;
+      const barRadius = 8;
 
-      // Power Bar
-      ctx.fillStyle = '#333';
-      ctx.fillRect(20, 40, 200, 15);
+      ctx.fillStyle = '#1e1e1e';
+      drawRoundedRect(ctx, hX, hY, hW, hH, barRadius);
+      ctx.fill();
+      
+      const healthRatio = Math.max(0, state.health / MAX_HEALTH);
+      if (healthRatio > 0) {
+        if (healthRatio > 0.6) {
+          ctx.fillStyle = '#10b981'; // Green
+        } else if (healthRatio > 0.3) {
+          ctx.fillStyle = '#f59e0b'; // Yellow
+        } else {
+          ctx.fillStyle = '#ef4444'; // Red
+        }
+        drawRoundedRect(ctx, hX, hY, hW * healthRatio, hH, barRadius);
+        ctx.fill();
+      }
+      ctx.strokeStyle = '#444444';
+      ctx.lineWidth = 1.5;
+      drawRoundedRect(ctx, hX, hY, hW, hH, barRadius);
+      ctx.stroke();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 10px monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText(t.health || 'HEALTH', hX + 8, hY + 11);
+
+      // Power / Energy Bar
+      const pX = 20;
+      const pY = 42;
+      const pW = 200;
+      const pH = 16;
+      ctx.fillStyle = '#1e1e1e';
+      drawRoundedRect(ctx, pX, pY, pW, pH, barRadius);
+      ctx.fill();
+
       const energyRatio = Math.max(0, state.energy / MAX_ENERGY);
-      ctx.fillStyle = '#00ffff';
-      ctx.fillRect(20, 40, 200 * energyRatio, 15);
-      ctx.strokeStyle = '#fff';
-      ctx.strokeRect(20, 40, 200, 15);
-      ctx.fillStyle = '#fff';
-      ctx.fillText(t.energy, 25, 51);
+      if (energyRatio > 0) {
+        if (energyRatio > 0.6) {
+          ctx.fillStyle = '#10b981'; // Green
+        } else if (energyRatio > 0.3) {
+          ctx.fillStyle = '#f59e0b'; // Yellow
+        } else {
+          ctx.fillStyle = '#ef4444'; // Red
+        }
+        drawRoundedRect(ctx, pX, pY, pW * energyRatio, pH, barRadius);
+        ctx.fill();
+      }
+      ctx.strokeStyle = '#444444';
+      ctx.lineWidth = 1.5;
+      drawRoundedRect(ctx, pX, pY, pW, pH, barRadius);
+      ctx.stroke();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 10px monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText(t.energy || 'POWER', pX + 8, pY + 11);
 
       // Score & Time
       ctx.fillStyle = '#fff';
@@ -852,23 +911,79 @@ export default function App() {
       const mapWidth = 40;
       const mapHeight = 150;
       const mapX = 20;
-      const mapY = 60;
-      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      const mapY = 66;
+      ctx.fillStyle = 'rgba(0,0,0,0.6)';
       ctx.fillRect(mapX, mapY, mapWidth, mapHeight);
-      ctx.strokeStyle = '#fff';
+      ctx.strokeStyle = '#222';
+      ctx.lineWidth = 1.5;
       ctx.strokeRect(mapX, mapY, mapWidth, mapHeight);
       
       // Player on minimap
-      const progress = Math.min(1, state.distance / GOAL_DISTANCE);
-      const playerMapY = mapY + mapHeight - (progress * mapHeight);
+      const progressValue = Math.min(1, state.distance / GOAL_DISTANCE);
+      const playerMapY = mapY + mapHeight - (progressValue * mapHeight);
       ctx.fillStyle = '#0f0';
       ctx.beginPath();
-      ctx.arc(mapX + mapWidth / 2, playerMapY, 3, 0, Math.PI * 2);
+      ctx.arc(mapX + mapWidth / 2, playerMapY, 4, 0, Math.PI * 2);
       ctx.fill();
       
       // Goal indicator on minimap
-      ctx.fillStyle = '#fff';
+      ctx.fillStyle = '#f59e0b';
       ctx.fillRect(mapX, mapY - 2, mapWidth, 4);
+
+      // Percentage below minimap
+      const mapPct = Math.floor(progressValue * 100);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 10px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(`${mapPct}%`, mapX + mapWidth / 2, mapY + mapHeight + 15);
+
+      // Speed Indicator as a vertical bar in the bottom-right corner
+      const speedX = CANVAS_WIDTH - 35;
+      const speedY = CANVAS_HEIGHT - 160;
+      const speedW = 12;
+      const speedH = 100;
+
+      // Container background for speedometer
+      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      drawRoundedRect(ctx, speedX - 6, speedY - 15, speedW + 12, speedH + 30, 6);
+      ctx.fill();
+      ctx.strokeStyle = '#222222';
+      ctx.lineWidth = 1;
+      drawRoundedRect(ctx, speedX - 6, speedY - 15, speedW + 12, speedH + 30, 6);
+      ctx.stroke();
+
+      // Speedometer track
+      ctx.fillStyle = '#1e1e1e';
+      drawRoundedRect(ctx, speedX, speedY, speedW, speedH, 4);
+      ctx.fill();
+
+      // Speed bar percentage
+      const currentSpeed = state.player.speed;
+      const minSpeed = BASE_SPEED * 0.5; // 100
+      const maxSpeed = MAX_SPEED; // 600
+      const speedRatio = Math.max(0, Math.min(1, (currentSpeed - minSpeed) / (maxSpeed - minSpeed)));
+
+      if (speedRatio > 0) {
+        const fillHeight = speedH * speedRatio;
+        ctx.fillStyle = '#00ffff'; // Beautiful Cyan
+        drawRoundedRect(ctx, speedX, speedY + (speedH - fillHeight), speedW, fillHeight, 4);
+        ctx.fill();
+      }
+
+      ctx.strokeStyle = '#444444';
+      ctx.lineWidth = 1;
+      drawRoundedRect(ctx, speedX, speedY, speedW, speedH, 4);
+      ctx.stroke();
+
+      // Speedometer Labels
+      ctx.fillStyle = '#00ffff';
+      ctx.font = 'bold 9px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('SPD', speedX + speedW / 2, speedY - 5);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 8px monospace';
+      ctx.fillText(`${Math.round(currentSpeed / 10)}`, speedX + speedW / 2, speedY + speedH + 11);
     };
 
     animationFrameId = requestAnimationFrame(update);
@@ -1011,98 +1126,198 @@ export default function App() {
         )}
         
         {gameState === 'menu' && (
-          <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center rounded-lg backdrop-blur-sm p-8 text-center">
-            <h1 className="text-5xl font-bold mb-2 tracking-tighter text-cyan-400">{t.title}</h1>
-            <p className="text-xl text-white italic mb-4">{t.subtitle}</p>
-            
-            <div className="max-w-md mb-8 text-neutral-300 text-sm leading-relaxed">
-              {t.context.split('\n').map((line, i) => (
-                <p key={i} className="mb-2">{line}</p>
-              ))}
-            </div>
-            
-            <div className="bg-neutral-900 p-6 rounded-xl border border-neutral-800 mb-8 text-sm text-neutral-300 space-y-2 text-left w-full max-w-sm">
-              <p className="text-white font-bold mb-2 border-b border-neutral-800 pb-1">{t.controls}</p>
-              <p><span className="text-white font-bold w-16 inline-block">W / S</span> {t.ws.split(': ')[1]}</p>
-              <p><span className="text-white font-bold w-16 inline-block">A / D</span> {t.ad.split(': ')[1]}</p>
-              <p><span className="text-white font-bold w-16 inline-block">SPACE</span> {t.space.split(': ')[1]}</p>
-              <p><span className="text-white font-bold w-16 inline-block">ENTER</span> {t.enter.split(': ')[1]}</p>
-              <div className="mt-4 pt-4 border-t border-neutral-800 space-y-1">
-                <p className="text-yellow-400">● {t.legendInsects}</p>
-                <p className="text-magenta-400">■ {t.legendCables}</p>
-                <p className="text-cyan-400">● {t.legendDrones}</p>
-                <p className="text-yellow-200">■ {t.legendFans}</p>
-                <p className="text-white">☁ {t.legendSmoke}</p>
+          <div className="absolute inset-0 bg-neutral-950/95 flex flex-col items-center justify-center rounded-lg backdrop-blur-md p-6 text-center overflow-y-auto select-none">
+            <div className="flex flex-col items-center max-w-2xl w-full">
+              {/* Bat Icon */}
+              <div className="text-6xl mb-1 animate-pulse filter drop-shadow-[0_0_15px_rgba(6,182,212,0.8)]">🦇</div>
+              
+              {/* Title with Cyan Glow */}
+              <h1 className="text-5xl md:text-6xl font-black mb-1 tracking-wider text-cyan-400 select-none uppercase drop-shadow-[0_0_15px_rgba(6,182,212,0.7)]">
+                {t.title}
+              </h1>
+              
+              {/* Tagline */}
+              <p className="text-sm md:text-base text-neutral-400 italic mb-4 max-w-md">
+                "{t.subtitle}"
+              </p>
+              
+              {/* Game Description */}
+              <div className="max-w-md mb-4 text-neutral-300 text-xs md:text-sm leading-relaxed px-4">
+                {t.context.split('\n').map((line, i) => (
+                  <p key={i} className="mb-1">{line}</p>
+                ))}
               </div>
-            </div>
 
-            <button 
-              onClick={startGame}
-              className="px-8 py-4 bg-white text-black font-bold text-xl rounded-full hover:bg-cyan-400 hover:scale-105 transition-all active:scale-95"
-            >
-              {t.start}
-            </button>
+              {/* Highlighted Objective */}
+              <div className="bg-cyan-950/40 border border-cyan-500/30 px-6 py-3 rounded-2xl max-w-md w-full mb-5 shadow-[0_0_15px_rgba(6,182,212,0.1)] text-center">
+                <span className="text-[10px] font-bold text-cyan-400 uppercase tracking-widest block mb-1">
+                  🎯 {t.objectiveLabel}
+                </span>
+                <p className="text-xs md:text-sm font-semibold text-white">
+                  {t.objectiveText}
+                </p>
+              </div>
+              
+              {/* Controls and Obstacles */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full mb-6">
+                {/* Column 1: Controls */}
+                <div className="bg-neutral-900/80 p-4 rounded-xl border border-neutral-800 text-left">
+                  <span className="text-cyan-400 text-[10px] font-bold uppercase tracking-widest block mb-2.5 border-b border-cyan-400/20 pb-1">
+                    ⌨️ {language === 'en' ? 'CONTROLS' : 'CONTROLES'}
+                  </span>
+                  <div className="space-y-2 text-[11px] md:text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2 py-0.5 bg-neutral-950 border border-cyan-500/30 text-cyan-400 font-mono rounded font-bold min-w-[54px] text-center shadow-[0_0_5px_rgba(6,182,212,0.15)]">W / S</span>
+                      <span className="text-neutral-300">{t.ws.split(': ')[1]}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="px-2 py-0.5 bg-neutral-950 border border-cyan-500/30 text-cyan-400 font-mono rounded font-bold min-w-[54px] text-center shadow-[0_0_5px_rgba(6,182,212,0.15)]">A / D</span>
+                      <span className="text-neutral-300">{t.ad.split(': ')[1]}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="px-2 py-0.5 bg-neutral-950 border border-cyan-500/30 text-cyan-400 font-mono rounded font-bold min-w-[54px] text-center shadow-[0_0_5px_rgba(6,182,212,0.15)]">SPACE</span>
+                      <span className="text-neutral-300">{t.space.split(': ')[1]}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="px-2 py-0.5 bg-neutral-950 border border-cyan-500/30 text-cyan-400 font-mono rounded font-bold min-w-[54px] text-center shadow-[0_0_5px_rgba(6,182,212,0.15)]">ENTER</span>
+                      <span className="text-neutral-300">{t.enter.split(': ')[1]}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Column 2: Obstacles */}
+                <div className="bg-neutral-900/80 p-4 rounded-xl border border-neutral-800 text-left">
+                  <span className="text-cyan-400 text-[10px] font-bold uppercase tracking-widest block mb-2.5 border-b border-cyan-400/20 pb-1">
+                    ⚠️ {language === 'en' ? 'LEGEND' : 'LEYENDA'}
+                  </span>
+                  <div className="space-y-2 text-[11px] md:text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="w-4 h-4 rounded-full bg-yellow-400 flex items-center justify-center text-[10px] text-black font-extrabold">•</span>
+                      <span className="text-neutral-300">{t.legendInsects}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-4 h-4 rounded bg-pink-500 flex items-center justify-center text-[8px] font-bold text-white">■</span>
+                      <span className="text-neutral-300">{t.legendCables}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-4 h-4 rounded-full bg-cyan-400 flex items-center justify-center text-[8px] font-bold text-black font-mono">•</span>
+                      <span className="text-neutral-300">{t.legendDrones}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-4 h-4 rounded bg-yellow-600/80 flex items-center justify-center text-[8px] font-bold">■</span>
+                      <span className="text-neutral-300">{t.legendFans}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-4 h-4 rounded bg-neutral-700/60 flex items-center justify-center text-[10px]">☁</span>
+                      <span className="text-neutral-300">{t.legendSmoke}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Best record displayed before Start Button */}
+              {highScore > 0 && (
+                <div className="mb-5 flex flex-col items-center bg-neutral-900/80 border border-cyan-500/20 hover:border-cyan-500/40 transition-colors px-6 py-2 rounded-xl shadow-[0_0_10px_rgba(6,182,212,0.05)]">
+                  <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">🏆 {t.record}</span>
+                  <span className="text-2xl font-black text-cyan-400">{highScore} <span className="text-xs font-normal text-neutral-500">pts</span></span>
+                </div>
+              )}
+
+              {/* Big Start Button with Cyan Glow */}
+              <button 
+                onClick={startGame}
+                className="px-12 py-4.5 bg-cyan-500 text-black font-black text-xl rounded-full hover:bg-cyan-400 hover:scale-105 transition-all active:scale-95 shadow-[0_0_25px_rgba(6,182,212,0.4)] hover:shadow-[0_0_35px_rgba(6,182,212,0.6)] cursor-pointer select-none"
+              >
+                {t.start}
+              </button>
+            </div>
           </div>
         )}
 
         {gameState === 'gameover' && (
-          <div className="absolute inset-0 bg-black/90 flex flex-col items-center justify-center rounded-lg backdrop-blur-md p-8">
-            <h2 className="text-6xl font-black text-red-600 mb-6 tracking-tighter uppercase italic">{t.gameOver}</h2>
+          <div className="absolute inset-0 bg-black/95 flex flex-col items-center justify-center rounded-lg backdrop-blur-md p-8 select-none">
+            {/* Game Over with Red glow */}
+            <h2 className="text-5xl md:text-6xl font-black text-red-600 mb-6 tracking-tighter uppercase italic drop-shadow-[0_0_15px_rgba(220,38,38,0.7)]">
+              {t.gameOver}
+            </h2>
             
-            <div className="grid grid-cols-2 gap-4 w-full max-w-sm mb-8">
-              <div className="bg-neutral-900 p-4 rounded-xl border border-neutral-800 text-center">
-                <p className="text-xs text-neutral-500 uppercase font-bold mb-1">{t.points}</p>
-                <p className="text-3xl font-bold text-white">{score}</p>
+            {/* Clean Cards with Monospace labels */}
+            <div className="grid grid-cols-2 gap-4 w-full max-w-md mb-8">
+              <div className="bg-neutral-900/80 p-4 rounded-xl border border-neutral-800 text-center flex flex-col justify-center">
+                <span className="text-[11px] font-mono text-neutral-500 uppercase font-bold tracking-wider mb-1">{t.points}</span>
+                <span className="text-3xl font-extrabold text-white font-mono">{score}</span>
               </div>
-              <div className="bg-neutral-900 p-4 rounded-xl border border-neutral-800 text-center">
-                <p className="text-xs text-neutral-500 uppercase font-bold mb-1">{t.record}</p>
-                <p className="text-3xl font-bold text-cyan-400">{highScore}</p>
+              <div className="bg-neutral-900/80 p-4 rounded-xl border border-neutral-800 text-center flex flex-col justify-center">
+                <span className="text-[11px] font-mono text-neutral-500 uppercase font-bold tracking-wider mb-1">{t.record}</span>
+                <span className="text-3xl font-extrabold text-cyan-400 font-mono">{highScore}</span>
               </div>
-              <div className="bg-neutral-900 p-4 rounded-xl border border-neutral-800 text-center">
-                <p className="text-xs text-neutral-500 uppercase font-bold mb-1">{t.progress}</p>
-                <p className="text-3xl font-bold text-yellow-500">{progress}%</p>
+              <div className="bg-neutral-900/80 p-4 rounded-xl border border-neutral-800 text-center flex flex-col justify-center">
+                <span className="text-[11px] font-mono text-neutral-500 uppercase font-bold tracking-wider mb-1">{t.progress}</span>
+                <span className="text-3xl font-extrabold text-yellow-500 font-mono">{progress}%</span>
               </div>
-              <div className="bg-neutral-900 p-4 rounded-xl border border-neutral-800 text-center">
-                <p className="text-xs text-neutral-500 uppercase font-bold mb-1">{t.time}</p>
-                <p className="text-xl font-bold text-white mt-1">{finalTime.split('.')[0]}</p>
+              <div className="bg-neutral-900/80 p-4 rounded-xl border border-neutral-800 text-center flex flex-col justify-center">
+                <span className="text-[11px] font-mono text-neutral-500 uppercase font-bold tracking-wider mb-1">{t.time}</span>
+                <span className="text-2xl font-extrabold text-white font-mono mt-1">{finalTime.split('.')[0]}</span>
               </div>
             </div>
 
-            <button 
-              onClick={startGame}
-              className="px-10 py-4 bg-white text-black font-bold text-xl rounded-full hover:bg-cyan-400 hover:scale-105 transition-all active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.2)]"
-            >
-              {t.restart}
-            </button>
+            {/* Red thematic button and MENU button */}
+            <div className="flex gap-4">
+              <button 
+                onClick={() => setGameState('menu')}
+                className="px-6 py-3 bg-neutral-800 text-neutral-300 font-bold text-base rounded-full hover:bg-neutral-750 transition-all hover:scale-105 active:scale-95 border border-neutral-700 cursor-pointer"
+              >
+                {t.menuBtn}
+              </button>
+              <button 
+                onClick={startGame}
+                className="px-8 py-3 bg-red-600 text-white font-black text-lg rounded-full hover:bg-red-500 hover:scale-105 transition-all active:scale-95 shadow-[0_0_20px_rgba(220,38,38,0.4)] hover:shadow-[0_0_30px_rgba(220,38,38,0.6)] cursor-pointer"
+              >
+                {t.restart}
+              </button>
+            </div>
           </div>
         )}
 
         {gameState === 'victory' && (
-          <div className="absolute inset-0 bg-black/90 flex flex-col items-center justify-center rounded-lg backdrop-blur-md p-8">
-            <h2 className="text-6xl font-black text-green-500 mb-2 tracking-tighter uppercase italic">{t.victory}</h2>
-            <p className="text-xl mb-8 text-neutral-400">{t.victorySub}</p>
+          <div className="absolute inset-0 bg-black/95 flex flex-col items-center justify-center rounded-lg backdrop-blur-md p-8 select-none">
+            {/* Victory with Green glow */}
+            <h2 className="text-5xl md:text-6xl font-black text-green-500 mb-2 tracking-tighter uppercase italic drop-shadow-[0_0_15px_rgba(34,197,94,0.7)]">
+              {t.victory}
+            </h2>
+            <p className="text-base md:text-lg mb-6 text-neutral-400 italic">"{t.victorySub}"</p>
             
-            <div className="grid grid-cols-2 gap-4 w-full max-w-sm mb-8">
-              <div className="bg-neutral-900 p-4 rounded-xl border border-neutral-800 text-center">
-                <p className="text-xs text-neutral-500 uppercase font-bold mb-1">{t.points}</p>
-                <p className="text-3xl font-bold text-white">{score}</p>
+            {/* Clean cards with Monospace labels */}
+            <div className="grid grid-cols-2 gap-4 w-full max-w-md mb-8">
+              <div className="bg-neutral-900/80 p-4 rounded-xl border border-neutral-800 text-center flex flex-col justify-center">
+                <span className="text-[11px] font-mono text-neutral-500 uppercase font-bold tracking-wider mb-1">{t.points}</span>
+                <span className="text-3xl font-extrabold text-white font-mono">{score}</span>
               </div>
-              <div className="bg-neutral-900 p-4 rounded-xl border border-neutral-800 text-center">
-                <p className="text-xs text-neutral-500 uppercase font-bold mb-1">{t.record}</p>
-                <p className="text-3xl font-bold text-cyan-400">{highScore}</p>
+              <div className="bg-neutral-900/80 p-4 rounded-xl border border-neutral-800 text-center flex flex-col justify-center">
+                <span className="text-[11px] font-mono text-neutral-500 uppercase font-bold tracking-wider mb-1">{t.record}</span>
+                <span className="text-3xl font-extrabold text-cyan-400 font-mono">{highScore}</span>
               </div>
-              <div className="bg-neutral-900 p-4 rounded-xl border border-neutral-800 text-center col-span-2">
-                <p className="text-xs text-neutral-500 uppercase font-bold mb-1">{t.time}</p>
-                <p className="text-3xl font-bold text-white">{finalTime}</p>
+              <div className="bg-neutral-900/80 p-4 rounded-xl border border-neutral-800 text-center col-span-2 flex flex-col justify-center">
+                <span className="text-[11px] font-mono text-neutral-500 uppercase font-bold tracking-wider mb-1">{t.time}</span>
+                <span className="text-3xl font-extrabold text-white font-mono">{finalTime}</span>
               </div>
             </div>
 
-            <button 
-              onClick={startGame}
-              className="px-10 py-4 bg-white text-black font-bold text-xl rounded-full hover:bg-cyan-400 hover:scale-105 transition-all active:scale-95 shadow-[0_0_20px_rgba(0,255,0,0.2)]"
-            >
-              {t.playAgain}
-            </button>
+            {/* Green thematic button and MENU button */}
+            <div className="flex gap-4">
+              <button 
+                onClick={() => setGameState('menu')}
+                className="px-6 py-3 bg-neutral-800 text-neutral-300 font-bold text-base rounded-full hover:bg-neutral-750 transition-all hover:scale-105 active:scale-95 border border-neutral-700 cursor-pointer"
+              >
+                {t.menuBtn}
+              </button>
+              <button 
+                onClick={startGame}
+                className="px-8 py-3 bg-green-600 text-white font-black text-lg rounded-full hover:bg-green-500 hover:scale-105 transition-all active:scale-95 shadow-[0_0_20px_rgba(22,163,74,0.4)] hover:shadow-[0_0_30px_rgba(22,163,74,0.6)] cursor-pointer"
+              >
+                {t.playAgain}
+              </button>
+            </div>
           </div>
         )}
       </div>
